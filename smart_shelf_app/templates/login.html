@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shelf - {{ username }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .shelf-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .shelf {
+            background-color: #0A4C6A;
+            padding: 20px;
+            width: 200px;
+            height: 380px;
+            /* Increased height to fit Last Updated */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-radius: 10px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            position: relative;
+        }
+
+        .inner-box {
+            background-color: white;
+            color: black;
+            width: 150px;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .shelf-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .unit-label {
+            font-size: 16px;
+            color: black;
+            font-weight: normal;
+        }
+
+        .weight-info {
+            font-size: 14px;
+            color: #ddd;
+        }
+
+        .last-updated {
+            font-size: 12px;
+            color: #ccc;
+            margin-top: 5px;
+        }
+
+        .limit-info {
+            font-size: 12px;
+            color: #ccc;
+            margin-top: 5px;
+        }
+
+        .shelf-id {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 14px;
+            font-weight: normal;
+            color: #ddd;
+        }
+
+        form {
+            display: inline-block;
+            text-align: left;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 50px;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        button,
+        select {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #0A4C6A;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover,
+        select:hover {
+            background-color: #062F3D;
+        }
+
+        select {
+            width: 180px;
+            text-align: center;
+            font-size: 16px;
+            background-color: white;
+            color: black;
+            border: 1px solid #0A4C6A;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Welcome, {{ username }}!</h1>
+    <h2>Smart Shelf Data</h2>
+    <h4>Total Smart Shelves Owned: {{ total_shelves }}</h4>
+    <button onclick="fetchShelfData('smart_shelf_1')">🔄 Fetch Latest Data</button>
+
+    <!-- 🔽 Dropdown Menu for Selecting Amount or Weight -->
+    <select id="dataType" onchange="updateDisplay()">
+        <option value="items">Amount</option>
+        <option value="weight">Weight</option>
+    </select>
+
+    {% for row in range(0, total_shelves * 3, 3) %}
+    <div class="shelf-container">
+        {% for shelf_id in range(row+1, row+4) %}
+        {% if shelf_id <= total_shelves * 3 %} <div class="shelf">
+            <div>Drawer {{ shelf_id }}</div>
+            <div class="inner-box">
+                <div id="shelf_{{ shelf_id }}_value" class="shelf-value">Loading...</div>
+                <div class="unit-label" id="shelf_{{ shelf_id }}_unit">Loading...</div>
+            </div>
+            <div id="shelf_{{ shelf_id }}_name">Loading...</div>
+            <div class="weight-info">Weight of One Item: <span id="shelf_{{ shelf_id }}_weight">Loading...</span> g
+            </div>
+            <div class="last-updated">Last Updated: <span id="shelf_{{ shelf_id }}_time">Loading...</span></div>
+            <div class="limit-info">Limit: <span id="shelf_{{ shelf_id }}_limit">Loading...</span> pcs</div>
+            <div class="shelf-id">ID: <span id="shelf_{{ shelf_id }}_id">Loading...</span></div>
+    </div>
+    {% endif %}
+    {% endfor %}
+    </div>
+    {% endfor %}
+
+
+    <!-- ✅ Update Smart Shelf Information Section -->
+    <form method="POST">
+        <h2>Update Smart Shelf Information</h2>
+        <label for="smart_shelf_selection">Select Smart Shelf:</label>
+        <select id="smart_shelf_selection" name="smart_shelf_id" onchange="updateTopic()">
+            {% for shelf in smart_shelves %}
+            <option value="{{ shelf }}">{{ shelf.replace('_', ' ').title() }}</option>
+            {% endfor %}
+        </select>
+        <input type="hidden" id="selected_topic" name="selected_topic" value="device/{{ smart_shelves[0] }}/sub">
+        <table>
+            <tr>
+                <th>Smart Shelf Name</th>
+                <th>Weight</th>
+            </tr>
+            <tr>
+                <td><input type="text" name="smart_shelf_1_name" placeholder="Drawer 1 Name"></td>
+                <td><input type="text" name="weight_item_1" placeholder="Weight in grams"> g</td>
+                <td><input type="text" name="lower_limet_1" placeholder="Lower limet"> pcs</td>
+            </tr>
+            <tr>
+                <td><input type="text" name="smart_shelf_2_name" placeholder="Drawer 2 Name"></td>
+                <td><input type="text" name="weight_item_2" placeholder="Weight in grams"> g</td>
+                <td><input type="text" name="lower_limet_2" placeholder="Lower limet"> pcs</td>
+            </tr>
+            <tr>
+                <td><input type="text" name="smart_shelf_3_name" placeholder="Drawer 3 Name"></td>
+                <td><input type="text" name="weight_item_3" placeholder="Weight in grams"> g</td>
+                <td><input type="text" name="lower_limet_3" placeholder="Lower limet"> pcs</td>
+            </tr>
+        </table>
+        <br>
+        <button type="submit">Submit</button>
+    </form>
+
+    <script>
+        let shelfDataCache = null;
+
+        function fetchShelfData(smart_shelf_id) {
+            fetch(`/fetch_shelf_data?smart_shelf_id=${smart_shelf_id}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Fetched Data:", data);
+                    shelfDataCache = data;
+                    updateDisplay();
+                })
+                .catch(error => console.error("Error fetching data:", error));
+        }
+
+        function updateDisplay() {
+            if (!shelfDataCache) return;
+
+            console.log("Fetched Data Structure:", shelfDataCache);
+
+            let selectedDataType = document.getElementById("dataType").value;
+            let unitLabel = selectedDataType === "items" ? "pcs" : "g";
+
+            for (let shelf_id = 1; shelf_id <= 3; shelf_id++) {
+                if (shelfDataCache[shelf_id]) {
+                    let selectedItem = shelfDataCache[shelf_id].find(entry => entry.measure_name === selectedDataType);
+                    let weightItem = shelfDataCache[shelf_id].find(entry => entry.measure_name === "weight_of_one_item");
+                    let limitItem = shelfDataCache[shelf_id].find(entry => entry.measure_name === "limit");
+
+
+                    // ✅ Extract smart_shelf_id from any entry in the array
+                    let smartShelfEntry = shelfDataCache[shelf_id][0]?.smart_shelf_id || "N/A";
+
+                    // ✅ Format time: Extract YYYY-MM-DD HH:MM from full timestamp
+                    let rawTime = selectedItem ? selectedItem.time : "N/A";
+                    let formattedTime = rawTime !== "N/A" ? rawTime.slice(0, 16) : "N/A";
+
+                    // document.getElementById(`shelf_${shelf_id}_value`).innerText = selectedItem ? selectedItem.measure_value : "N/A";
+                    if (selectedItem) {
+                        // Round the number only if it's "items"
+                        let displayValue = (selectedDataType === "items") ? Math.round(selectedItem.measure_value) : selectedItem.measure_value;
+                        document.getElementById(`shelf_${shelf_id}_value`).innerText = displayValue;
+
+                        let limitValue = limitItem ? limitItem.measure_value : null;
+
+                        if (limitValue !== null && displayValue < limitValue) {
+                            document.getElementById(`shelf_${shelf_id}_value`).style.color = "red";
+                        } else {
+                            document.getElementById(`shelf_${shelf_id}_value`).style.color = "";
+                        }
+                    } else {
+                        document.getElementById(`shelf_${shelf_id}_value`).innerText = "N/A";
+                    }
+
+                    document.getElementById(`shelf_${shelf_id}_unit`).innerText = selectedItem ? unitLabel : "";
+                    document.getElementById(`shelf_${shelf_id}_name`).innerText = selectedItem ? selectedItem.name : "Unknown";
+                    document.getElementById(`shelf_${shelf_id}_weight`).innerText = weightItem ? weightItem.measure_value : "N/A";
+                    document.getElementById(`shelf_${shelf_id}_time`).innerText = formattedTime; // ✅ Correctly show formatted time
+                    document.getElementById(`shelf_${shelf_id}_limit`).innerText = limitItem ? limitItem.measure_value : "N/A";
+                    document.getElementById(`shelf_${shelf_id}_id`).innerText = smartShelfEntry; // ✅ Correctly display smart_shelf_id
+
+                }
+            }
+        }
+
+        function updateTopic() {
+            let selectedShelf = document.getElementById("smart_shelf_selection").value;
+            document.getElementById("selected_topic").value = `device/${selectedShelf}/sub`;
+        }
+    </script>
+
+</body>
+
+</html>
