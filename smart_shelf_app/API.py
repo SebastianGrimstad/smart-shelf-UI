@@ -1,6 +1,7 @@
 import requests
 import json
 from collections import OrderedDict  # Use OrderedDict for sorted grouping
+from collections import defaultdict  # Use defaultdict for nested dictionaries
 
 # API Gateway URL & Key
 API_URL = "https://z15rivu3vh.execute-api.eu-west-1.amazonaws.com/Smart_Shelf_stage"
@@ -8,25 +9,25 @@ API_KEY = "H0fQFzrA2V5VWhOCX1ifd8JcDEvJQPsZ4rqX1iJU"
 
 # Define a struct-like class to store shelf data
 class SmartShelfData:
-    def __init__(self, time, shelf_id, smart_shelf_id, name, measure_name, measure_value):
-        self.time = time
+    def __init__(self, smart_shelf_id):
         self.smart_shelf_id = smart_shelf_id
-        self.shelf_id = int(shelf_id)  # Ensure shelf_Id is treated as a number
-        self.name = name
-        self.measure_name = measure_name
-        self.measure_value = measure_value
+        self.shelves = defaultdict(dict)  # Stores shelf_id as key
 
-    def __repr__(self):
-        return (
-            f"SmartShelfData(\n"
-            f"    time           = {self.time}\n"
-            f"    smart_shelf_id = {self.smart_shelf_id}\n"
-            f"    shelf_id       = {self.shelf_id}\n"
-            f"    name           = {self.name}\n"
-            f"    measure_name   = {self.measure_name}\n"
-            f"    measure_value  = {self.measure_value}\n"
-            f")"
-        )
+    def add_entry(self, time, shelf_id, name, measure_name, measure_value):
+        """ Adds a new measurement to the shelf. """
+        shelf = self.shelves.setdefault(shelf_id, {
+            "name": name,
+            "time": time,
+            "items": "N/A",
+            "weight": "N/A",
+            "weight_of_one_item": "N/A",
+            "limit": "N/A"
+        })
+        shelf[measure_name] = measure_value  # Set the corresponding measurement
+
+    def to_dict(self):
+        """ Converts the class object into a serializable dictionary. """
+        return {self.smart_shelf_id: self.shelves}
 
 def fetch_shelf_data(smart_shelf_id):
     """
@@ -36,36 +37,35 @@ def fetch_shelf_data(smart_shelf_id):
         smart_shelf_id (str): The ID of the smart shelf.
 
     Returns:
-        OrderedDict: Grouped shelf data sorted by shelf_Id.
+        dict: A structured dictionary representing the smart shelf data.
     """
-    # Set up headers and query parameters
     headers = {"x-api-key": API_KEY}
     params = {"smart_shelf_id": smart_shelf_id}
 
     try:
-        # Make the GET request to API Gateway
         response = requests.get(API_URL, headers=headers, params=params)
 
         if response.status_code == 200:
-            response_data = response.json()  # First level of JSON parsing
+            response_data = response.json()
 
-            # Extract the actual JSON list from 'body' field (which is a string)
-            data = json.loads(response_data["body"])
+            if "body" in response_data:
+                data = json.loads(response_data["body"])
+            else:
+                data = response_data
 
-            # Convert JSON response into structured objects
-            shelf_data_list = [SmartShelfData(**item) for item in data]
+            # Initialize a SmartShelfData object
+            smart_shelf = SmartShelfData(smart_shelf_id)
 
-            # Sort the data by `shelf_Id` before grouping
-            shelf_data_list.sort(key=lambda x: x.shelf_id)
+            for item in data:
+                smart_shelf.add_entry(
+                    time=item["time"],
+                    shelf_id=item["shelf_id"],
+                    name=item["name"],
+                    measure_name=item["measure_name"],
+                    measure_value=item["measure_value"]
+                )
 
-            # Use OrderedDict to maintain sorted order
-            grouped_data = OrderedDict()
-            for shelf_data in shelf_data_list:
-                if shelf_data.shelf_id not in grouped_data:
-                    grouped_data[shelf_data.shelf_id] = []
-                grouped_data[shelf_data.shelf_id].append(shelf_data)
-
-            return grouped_data  # ✅ Now returns structured grouped data
+            return smart_shelf.to_dict()  # Return as a dictionary
 
         else:
             print(f"Error: {response.status_code}, Message: {response.text}")
@@ -74,3 +74,4 @@ def fetch_shelf_data(smart_shelf_id):
     except requests.exceptions.RequestException as e:
         print("Request failed:", e)
         return None
+
